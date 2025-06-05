@@ -1,4 +1,8 @@
 // using Azure.AI.OpenAI;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using OpenAI;
 using OpenAI.Chat;
 
@@ -6,25 +10,39 @@ namespace genai.Services;
 
 public class GenAiService : IGenAiService
 {
-    public async Task InitiateConversation()
+
+    private ConcurrentDictionary<string, ChatClient> _chatClients = new();
+    private readonly string _key;
+    private readonly OpenAIClient _client;
+    public GenAiService()
     {
-        string key = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? string.Empty;
-        var client = new OpenAIClient(key);
+        _key = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? string.Empty;
+        if (string.IsNullOrEmpty(_key))
+        {
+            throw new InvalidOperationException("OpenAI API key is not set in environment variables.");
+        }
+        _client = new OpenAIClient(_key);
+    }
 
+
+    public async Task<(string response, string format)> InitiateConversation(string chatMessage)
+    {
         string deploymentModelName = "gpt-4.1-mini";
-        ChatClient chatClient = client.GetChatClient(deploymentModelName);
+        ChatClient chatClient = _client.GetChatClient(deploymentModelName);
         var systemMessage = new SystemChatMessage("You are a helpful assistant.");
-
 
 
         List<ChatMessage> messages = new List<ChatMessage>
         {
             new SystemChatMessage("You are a helpful assistant."),
-            new UserChatMessage("Hello, how can you assist me today?"),
         };
+        UserChatMessage userPrompt = new UserChatMessage(chatMessage);
+        messages.Add(userPrompt);
 
         ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(messages);
-        Console.WriteLine($"Chat Completion Response: {chatCompletion.Content.FirstOrDefault()?.Text}");
+
+        return (chatCompletion.Content.FirstOrDefault()?.Text ?? string.Empty, "text/plain");
+
         //OpenAI.Chat.ChatCompletionOptions completionOptions = new();
 
         // var chatOptions = new ChatRequest {
@@ -39,10 +57,10 @@ public class GenAiService : IGenAiService
         //     }
         // };
     }
-}
 
+}
 
 public interface IGenAiService
 {
-    Task InitiateConversation();
+    Task<(string response, string format)> InitiateConversation(string chatMessage);
 }
