@@ -1,8 +1,5 @@
 // using Azure.AI.OpenAI;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using OpenAI;
 using OpenAI.Chat;
 
@@ -10,8 +7,7 @@ namespace genai.Services;
 
 public class GenAiService : IGenAiService
 {
-
-    private ConcurrentDictionary<string, ChatClient> _chatClients = new();
+    private ConcurrentDictionary<string, List<ChatMessage>> _chatRecordsData;
     private readonly string _key;
     private readonly OpenAIClient _client;
     public GenAiService()
@@ -22,45 +18,48 @@ public class GenAiService : IGenAiService
             throw new InvalidOperationException("OpenAI API key is not set in environment variables.");
         }
         _client = new OpenAIClient(_key);
+        _chatRecordsData = new ConcurrentDictionary<string, List<ChatMessage>>();
     }
 
 
-    public async Task<(string response, string format)> InitiateConversation(string chatMessage)
+    public async Task<(string response, string outChatGuid, string format)> InitiateConversation(string chatMessage, string? chatGuid = null, string? SystemChatMessage = null)
     {
         string deploymentModelName = "gpt-4.1-mini";
         ChatClient chatClient = _client.GetChatClient(deploymentModelName);
-        var systemMessage = new SystemChatMessage("You are a helpful assistant.");
+        SystemChatMessage systemMessage = new("You are a helpful assistant.");
+        string chatGuidKey = chatGuid ?? string.Empty;
 
-
-        List<ChatMessage> messages = new List<ChatMessage>
+        List<ChatMessage> chatHistory = [];
+        if (!string.IsNullOrEmpty(chatGuid))
         {
-            new SystemChatMessage("You are a helpful assistant."),
-        };
-        UserChatMessage userPrompt = new UserChatMessage(chatMessage);
-        messages.Add(userPrompt);
+            _chatRecordsData.TryGetValue(chatGuid ?? deploymentModelName, out List<ChatMessage>? outChatHistory);
+            chatHistory.AddRange(outChatHistory ?? Enumerable.Empty<ChatMessage>());
+        }
+        else
+        {
+            chatGuidKey = Guid.NewGuid().ToString();
+            chatHistory =
+            [
+                new SystemChatMessage(string.IsNullOrWhiteSpace(SystemChatMessage) ? "You are a helpful assistant." : SystemChatMessage),
+            ];
+        }
+        chatHistory.Add(new UserChatMessage(chatMessage));
 
-        ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(messages);
-
-        return (chatCompletion.Content.FirstOrDefault()?.Text ?? string.Empty, "text/plain");
-
-        //OpenAI.Chat.ChatCompletionOptions completionOptions = new();
-
-        // var chatOptions = new ChatRequest {
-        //     Model = deploymentModelName,
-        //     Messages = new List<Message>
-        //     {
-        //         new Message
-        //         {
-        //             Role = "user",
-        //             Content = "Hello, how can you assist me today?"
-        //         }
-        //     }
-        // };
+        ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(chatHistory);
+        _chatRecordsData.AddOrUpdate(chatGuidKey, chatHistory, (key, existingValue) =>
+        {
+            existingValue.Add(new UserChatMessage(chatMessage));
+            if (chatCompletion.Content.Any())
+            {
+                existingValue.Add(new AssistantChatMessage(chatCompletion.Content.FirstOrDefault()?.Text ?? string.Empty));
+            }
+            return existingValue;
+        });
+        return (chatCompletion.Content.FirstOrDefault()?.Text ?? string.Empty, chatGuidKey, "text/plain");
     }
-
 }
 
 public interface IGenAiService
 {
-    Task<(string response, string format)> InitiateConversation(string chatMessage);
+    Task<(string response, string outChatGuid, string format)> InitiateConversation(string chatMessage, string? chatGuid = null, string? SystemChatMessage = null);
 }
