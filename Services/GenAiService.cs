@@ -1,4 +1,3 @@
-// using Azure.AI.OpenAI;
 using System.Collections.Concurrent;
 using OpenAI;
 using OpenAI.Chat;
@@ -29,7 +28,6 @@ public class GenAiService : IGenAiService
         SystemChatMessage systemMessage = new(systemChatMessage ?? "You are a helpful assistant.");
         string chatGuidKey = chatGuid ?? string.Empty;
 
-        //List<ChatMessage> chatHistory = [];
         if (string.IsNullOrEmpty(chatGuid))
         {
             chatGuidKey = Guid.NewGuid().ToString();
@@ -38,7 +36,8 @@ public class GenAiService : IGenAiService
                 new SystemChatMessage(string.IsNullOrWhiteSpace(systemChatMessage) ? "You are a helpful assistant." : systemChatMessage)
             });
         }
-        else if (_chatRecordsData.TryGetValue(chatGuid ?? deploymentModelName,out _))
+
+        if (_chatRecordsData.TryGetValue(chatGuidKey, out _))
         {
             _chatRecordsData.AddOrUpdate(chatGuidKey, [new UserChatMessage(chatMessage)], (key, existingValue) =>
             {
@@ -46,17 +45,6 @@ public class GenAiService : IGenAiService
                 return existingValue;
             });
         }
-
-        // chatHistory.AddRange(outChatHistory ?? Enumerable.Empty<ChatMessage>());
-        // else
-        // {
-            
-        //     chatHistory =
-        //     [
-        //         new SystemChatMessage(string.IsNullOrWhiteSpace(SystemChatMessage) ? "You are a helpful assistant." : SystemChatMessage),
-        //     ];
-        // }
-        // chatHistory.Add(new UserChatMessage(chatMessage));
 
         ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(_chatRecordsData.FirstOrDefault().Value);
         _chatRecordsData.AddOrUpdate(chatGuidKey, [new AssistantChatMessage(chatCompletion.Content.FirstOrDefault()?.Text ?? string.Empty)], (key, existingValue) =>
