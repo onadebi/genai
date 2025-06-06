@@ -22,33 +22,46 @@ public class GenAiService : IGenAiService
     }
 
 
-    public async Task<(string response, string outChatGuid, string format)> InitiateConversation(string chatMessage, string? chatGuid = null, string? SystemChatMessage = null)
+    public async Task<(string response, string outChatGuid, string format)> InitiateConversation(string chatMessage, string? chatGuid = null, string? systemChatMessage = null)
     {
         string deploymentModelName = "gpt-4.1-mini";
         ChatClient chatClient = _client.GetChatClient(deploymentModelName);
-        SystemChatMessage systemMessage = new("You are a helpful assistant.");
+        SystemChatMessage systemMessage = new(systemChatMessage ?? "You are a helpful assistant.");
         string chatGuidKey = chatGuid ?? string.Empty;
 
-        List<ChatMessage> chatHistory = [];
-        if (!string.IsNullOrEmpty(chatGuid))
-        {
-            _chatRecordsData.TryGetValue(chatGuid ?? deploymentModelName, out List<ChatMessage>? outChatHistory);
-            chatHistory.AddRange(outChatHistory ?? Enumerable.Empty<ChatMessage>());
-        }
-        else
+        //List<ChatMessage> chatHistory = [];
+        if (string.IsNullOrEmpty(chatGuid))
         {
             chatGuidKey = Guid.NewGuid().ToString();
-            chatHistory =
-            [
-                new SystemChatMessage(string.IsNullOrWhiteSpace(SystemChatMessage) ? "You are a helpful assistant." : SystemChatMessage),
-            ];
+            _chatRecordsData.TryAdd(chatGuidKey, new List<ChatMessage>()
+            {
+                new SystemChatMessage(string.IsNullOrWhiteSpace(systemChatMessage) ? "You are a helpful assistant." : systemChatMessage)
+            });
         }
-        chatHistory.Add(new UserChatMessage(chatMessage));
-
-        ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(chatHistory);
-        _chatRecordsData.AddOrUpdate(chatGuidKey, chatHistory, (key, existingValue) =>
+        else if (_chatRecordsData.TryGetValue(chatGuid ?? deploymentModelName,out _))
         {
-            existingValue.Add(new UserChatMessage(chatMessage));
+            _chatRecordsData.AddOrUpdate(chatGuidKey, [new UserChatMessage(chatMessage)], (key, existingValue) =>
+            {
+                existingValue.Add(new UserChatMessage(chatMessage));
+                return existingValue;
+            });
+        }
+
+        // chatHistory.AddRange(outChatHistory ?? Enumerable.Empty<ChatMessage>());
+        // else
+        // {
+            
+        //     chatHistory =
+        //     [
+        //         new SystemChatMessage(string.IsNullOrWhiteSpace(SystemChatMessage) ? "You are a helpful assistant." : SystemChatMessage),
+        //     ];
+        // }
+        // chatHistory.Add(new UserChatMessage(chatMessage));
+
+        ChatCompletion chatCompletion = await chatClient.CompleteChatAsync(_chatRecordsData.FirstOrDefault().Value);
+        _chatRecordsData.AddOrUpdate(chatGuidKey, [new AssistantChatMessage(chatCompletion.Content.FirstOrDefault()?.Text ?? string.Empty)], (key, existingValue) =>
+        {
+            // existingValue.Add(new UserChatMessage(chatMessage));
             if (chatCompletion.Content.Any())
             {
                 existingValue.Add(new AssistantChatMessage(chatCompletion.Content.FirstOrDefault()?.Text ?? string.Empty));
@@ -61,5 +74,5 @@ public class GenAiService : IGenAiService
 
 public interface IGenAiService
 {
-    Task<(string response, string outChatGuid, string format)> InitiateConversation(string chatMessage, string? chatGuid = null, string? SystemChatMessage = null);
+    Task<(string response, string outChatGuid, string format)> InitiateConversation(string chatMessage, string? chatGuid = null, string? systemChatMessage = null);
 }
