@@ -2,6 +2,7 @@
 
 
 using genai.Services;
+using OpenAI.Chat;
 
 Console.WriteLine("\t\t----------------GENAI----------------\n");
 
@@ -31,7 +32,15 @@ while (!chatMessage.Equals("q", StringComparison.CurrentCultureIgnoreCase) && !c
 
         #region Streaming Example
         var response = genAiServiceStreaming.GetChatResponseStream(chatMessage, chatGuid: chatGuid);
-
+        Console.WriteLine("Chat assistant:");
+        await foreach (StreamingChatCompletionUpdate updateResponse in response)
+        {
+            if (updateResponse.ContentUpdate.Count > 0 && updateResponse is StreamingChatCompletionUpdate update)
+            {
+                System.Threading.Thread.Sleep(100); // Simulate processing delay
+                Console.Write(updateResponse.ContentUpdate[0].Text);
+            }
+        }
         #endregion
     }
     catch (Exception ex)
@@ -39,7 +48,7 @@ while (!chatMessage.Equals("q", StringComparison.CurrentCultureIgnoreCase) && !c
         Console.WriteLine($"An error occurred: {ex.Message}");
     }
 
-    Console.WriteLine("\nPlease enter your next chat prompt or \"q\" to exit:");
+    Console.WriteLine("\n\nEnter your next chat prompt or \"q/quit\" to exit:");
     chatMessage = Console.ReadLine() ?? string.Empty;
 }
 
