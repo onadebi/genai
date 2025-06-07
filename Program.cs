@@ -10,6 +10,7 @@ Console.WriteLine("Welcome to the GenAI Service. Please enter your chat prompt. 
 
 string chatMessage = Console.ReadLine() ?? string.Empty;
 IGenAiService genAiService = new GenAiService();
+IGenAiServiceStreaming genAiServiceStreaming = new GenAiServiceStreaming();
 string chatGuid = string.Empty  ;
 while (!chatMessage.Equals("q", StringComparison.CurrentCultureIgnoreCase) && !chatMessage.Equals("quit", StringComparison.CurrentCultureIgnoreCase))
 {
@@ -22,9 +23,16 @@ while (!chatMessage.Equals("q", StringComparison.CurrentCultureIgnoreCase) && !c
 
     try
     {
-        var response = await genAiService.InitiateConversation(chatMessage, chatGuid: chatGuid);
-        chatGuid = response.outChatGuid;
-        Console.WriteLine($"Response: {response.response}");
+        #region Non-Streaming Example
+        // var response = await genAiService.InitiateConversation(chatMessage, chatGuid: chatGuid);
+        // chatGuid = response.outChatGuid;
+        // Console.WriteLine($"Response: {response.response}");
+        #endregion
+
+        #region Streaming Example
+        var response = genAiServiceStreaming.GetChatResponseStream(chatMessage, chatGuid: chatGuid);
+
+        #endregion
     }
     catch (Exception ex)
     {
