@@ -12,7 +12,8 @@ Console.WriteLine("Welcome to the GenAI Service. Please enter your chat prompt. 
 string chatMessage = Console.ReadLine() ?? string.Empty;
 IGenAiService genAiService = new GenAiService();
 IGenAiServiceStreaming genAiServiceStreaming = new GenAiServiceStreaming();
-string chatGuid = string.Empty  ;
+string chatGuid = string.Empty;
+string guidSvc = string.Empty;
 while (!chatMessage.Equals("q", StringComparison.CurrentCultureIgnoreCase) && !chatMessage.Equals("quit", StringComparison.CurrentCultureIgnoreCase))
 {
     if (string.IsNullOrEmpty(chatMessage))
@@ -31,7 +32,8 @@ while (!chatMessage.Equals("q", StringComparison.CurrentCultureIgnoreCase) && !c
         #endregion
 
         #region Streaming Example
-        var response = genAiServiceStreaming.GetChatResponseStream(chatMessage, chatGuid: chatGuid);
+        var response = genAiServiceStreaming.GetChatResponseStream(chatMessage, out guidSvc, chatGuid: chatGuid);
+        if(string.IsNullOrWhiteSpace(chatGuid)){ chatGuid = guidSvc; }
         Console.WriteLine("Chat assistant:");
         await foreach (StreamingChatCompletionUpdate updateResponse in response)
         {

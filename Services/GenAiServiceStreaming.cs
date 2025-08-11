@@ -20,8 +20,9 @@ public class GenAiServiceStreaming : IGenAiServiceStreaming
         _chatRecordsData = new ConcurrentDictionary<string, List<ChatMessage>>();
     }
 
-    public System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatResponseStream(string chatMessage, string? chatGuid = null, string? systemChatMessage = null)
+    public System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatResponseStream(string chatMessage, out string guid, string? chatGuid = null, string? systemChatMessage = null)
     {
+        guid = string.Empty;
         string deploymentModelName = "gpt-4.1-mini";
         ChatClient chatClient = _client.GetChatClient(deploymentModelName);
         SystemChatMessage systemMessage = new(systemChatMessage ?? "You are a helpful assistant.");
@@ -29,7 +30,7 @@ public class GenAiServiceStreaming : IGenAiServiceStreaming
 
         if (string.IsNullOrEmpty(chatGuid))
         {
-            chatGuidKey = Guid.NewGuid().ToString();
+            guid = Guid.NewGuid().ToString();
             _chatRecordsData.TryAdd(chatGuidKey, new List<ChatMessage>()
             {
                 new SystemChatMessage(string.IsNullOrWhiteSpace(systemChatMessage) ? "You are a helpful assistant." : systemChatMessage)
@@ -106,5 +107,5 @@ public class GenAiServiceStreaming : IGenAiServiceStreaming
 public interface IGenAiServiceStreaming
 {
     Task<(string response, string outChatGuid, string format)> InitiateConversationStream(string chatMessage, string? chatGuid = null, string? systemChatMessage = null);
-    System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatResponseStream(string chatMessage, string? chatGuid = null, string? systemChatMessage = null);
+    System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatResponseStream(string chatMessage,out string guid, string? chatGuid = null, string? systemChatMessage = null);
 }
