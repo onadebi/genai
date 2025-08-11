@@ -20,34 +20,34 @@ public class GenAiServiceStreaming : IGenAiServiceStreaming
         _chatRecordsData = new ConcurrentDictionary<string, List<ChatMessage>>();
     }
 
-    public System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatResponseStream(string chatMessage, out string guid, string? chatGuid = null, string? systemChatMessage = null)
+    public System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatResponseStream(ConcurrentDictionary<string, List<ChatMessage>> chatMessage)
     {
-        guid = string.Empty;
         string deploymentModelName = "gpt-4.1-mini";
         ChatClient chatClient = _client.GetChatClient(deploymentModelName);
-        SystemChatMessage systemMessage = new(systemChatMessage ?? "You are a helpful assistant.");
-        string chatGuidKey = chatGuid ?? string.Empty;
+        // SystemChatMessage systemMessage = new(systemChatMessage ?? "You are a helpful assistant.");
+        // string chatGuidKey = chatGuid ?? string.Empty;
 
-        if (string.IsNullOrEmpty(chatGuid))
-        {
-            guid = Guid.NewGuid().ToString();
-            _chatRecordsData.TryAdd(chatGuidKey, new List<ChatMessage>()
-            {
-                new SystemChatMessage(string.IsNullOrWhiteSpace(systemChatMessage) ? "You are a helpful assistant." : systemChatMessage)
-            });
-        }
+        // if (string.IsNullOrEmpty(chatGuid))
+        // {
+        //     guid = Guid.NewGuid().ToString();
+        //     _chatRecordsData.TryAdd(chatGuidKey, new List<ChatMessage>()
+        //     {
+        //         new SystemChatMessage(string.IsNullOrWhiteSpace(systemChatMessage) ? "You are a helpful assistant." : systemChatMessage)
+        //     });
+        // }
 
-        if (_chatRecordsData.TryGetValue(chatGuidKey, out _))
-        {
-            _chatRecordsData.AddOrUpdate(chatGuidKey, [new UserChatMessage(chatMessage)], (key, existingValue) =>
-            {
-                existingValue.Add(new UserChatMessage(chatMessage));
-                return existingValue;
-            });
-        }
+        // if (_chatRecordsData.TryGetValue(chatGuidKey, out _))
+        // {
+        //     _chatRecordsData.AddOrUpdate(chatGuidKey, [new UserChatMessage(chatMessage)], (key, existingValue) =>
+        //     {
+        //         existingValue.Add(new UserChatMessage(chatMessage));
+        //         return existingValue;
+        //     });
+        // }
+        List<ChatMessage> chatHistory = chatMessage.FirstOrDefault().Value;
 
         System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> chatCompletion
-                = chatClient.CompleteChatStreamingAsync(_chatRecordsData.FirstOrDefault().Value);
+                = chatClient.CompleteChatStreamingAsync(chatHistory);
         return chatCompletion;
     }
 
@@ -107,5 +107,5 @@ public class GenAiServiceStreaming : IGenAiServiceStreaming
 public interface IGenAiServiceStreaming
 {
     Task<(string response, string outChatGuid, string format)> InitiateConversationStream(string chatMessage, string? chatGuid = null, string? systemChatMessage = null);
-    System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatResponseStream(string chatMessage,out string guid, string? chatGuid = null, string? systemChatMessage = null);
+    System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatResponseStream(ConcurrentDictionary<string, List<ChatMessage>> chatMessage);
 }
