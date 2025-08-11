@@ -22,28 +22,10 @@ public class GenAiServiceStreaming : IGenAiServiceStreaming
 
     public System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> GetChatResponseStream(ConcurrentDictionary<string, List<ChatMessage>> chatMessage)
     {
+
         string deploymentModelName = "gpt-4.1-mini";
         ChatClient chatClient = _client.GetChatClient(deploymentModelName);
-        // SystemChatMessage systemMessage = new(systemChatMessage ?? "You are a helpful assistant.");
-        // string chatGuidKey = chatGuid ?? string.Empty;
 
-        // if (string.IsNullOrEmpty(chatGuid))
-        // {
-        //     guid = Guid.NewGuid().ToString();
-        //     _chatRecordsData.TryAdd(chatGuidKey, new List<ChatMessage>()
-        //     {
-        //         new SystemChatMessage(string.IsNullOrWhiteSpace(systemChatMessage) ? "You are a helpful assistant." : systemChatMessage)
-        //     });
-        // }
-
-        // if (_chatRecordsData.TryGetValue(chatGuidKey, out _))
-        // {
-        //     _chatRecordsData.AddOrUpdate(chatGuidKey, [new UserChatMessage(chatMessage)], (key, existingValue) =>
-        //     {
-        //         existingValue.Add(new UserChatMessage(chatMessage));
-        //         return existingValue;
-        //     });
-        // }
         List<ChatMessage> chatHistory = chatMessage.FirstOrDefault().Value;
 
         System.ClientModel.AsyncCollectionResult<StreamingChatCompletionUpdate> chatCompletion
@@ -100,6 +82,8 @@ public class GenAiServiceStreaming : IGenAiServiceStreaming
         });
         return (sb.ToString(), chatGuidKey, "text/plain");
     }
+
+
 }
 
 
